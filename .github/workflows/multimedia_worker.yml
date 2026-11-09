@@ -1,0 +1,44 @@
+name: Multimedia CPU Worker
+
+on:
+  workflow_dispatch:
+    inputs:
+      payload_json:
+        description: 'Task configuration JSON payload'
+        required: true
+        type: string
+
+jobs:
+  process-media:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install System Multimedia Packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg mkvtoolnix aria2
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install Python Dependencies
+        run: |
+          pip install requests numpy scipy gdown yt-dlp torch --extra-index-url https://download.pytorch.org/whl/cpu
+
+      - name: Execute Multimedia Payload
+        run: |
+          python3 -c '
+          import os, json, worker_payload
+          cfg = json.loads("""${{ github.event.inputs.payload_json }}""")
+          task = cfg.get("task_type", "audio_sync")
+          if task == "upscale":
+              worker_payload.run_upscale(cfg)
+          else:
+              worker_payload.run_audio_sync(cfg)
+          '
+          
